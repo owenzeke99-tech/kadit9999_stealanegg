@@ -1,0 +1,324 @@
+--// Services
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+--// Key & Link Configuration
+local CORRECT_KEY = "ChilliHubV7StealAnEggKeyHsksowjwoJslsownwnlLakwLakwjwi"
+local GET_KEY_URL = "https://link4m.org/44zAOP"
+local TARGET_SCRIPT_URL = "https://raw.githubusercontent.com/kadit9999/stealanegg/refs/heads/main/ChilliV5BaKhi.lua"
+local SAVE_FILE_NAME = "ChilliHub_StealAnEgg_Key.json"
+
+--// Check Local Key Storage with 24-Hour Expiration (Hidden)
+local function getSavedKey()
+    if pcall(function() readfile(SAVE_FILE_NAME) end) then
+        local success, data = pcall(function()
+            return HttpService:JSONDecode(readfile(SAVE_FILE_NAME))
+        end)
+        -- Kiểm tra key đúng và thời gian lưu chưa quá 24 giờ (86400 giây)
+        if success and data and data.Key == CORRECT_KEY and data.Time then
+            if os.time() - data.Time < 86400 then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function saveKey()
+    pcall(function()
+        writefile(SAVE_FILE_NAME, HttpService:JSONEncode({
+            Key = CORRECT_KEY,
+            Time = os.time()
+        }))
+    end)
+end
+
+-- Nếu đã lưu key hợp lệ trong vòng 24h, chạy luôn script chính và ẩn bảng key
+if getSavedKey() then
+    loadstring(game:HttpGet(TARGET_SCRIPT_URL))()
+    return
+end
+
+--// Create UI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ChilliHubKeySystem"
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+
+-- Khung Menu Chính
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+MainFrame.BackgroundTransparency = 0.15
+MainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+MainFrame.BorderSizePixel = 0
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.Size = UDim2.new(0, 440, 0, 240)
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 18)
+MainCorner.Parent = MainFrame
+
+-- Viền cầu vồng chạy liên tục
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(255, 255, 255)
+MainStroke.Thickness = 2
+MainStroke.Parent = MainFrame
+
+task.spawn(function()
+    local hue = 0
+    while MainFrame and MainFrame.Parent do
+        hue = (tick() % 6) / 6
+        MainStroke.Color = Color3.fromHSV(hue, 1, 1)
+        task.wait(0.03)
+    end
+end)
+
+--// Smooth Dragging (Kéo thả mượt mà)
+local dragging, dragInput, dragStart, startPos
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if dragging and dragInput then
+            local delta = dragInput.Position - dragStart
+            TweenService:Create(MainFrame, TweenInfo.new(0.08, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            }):Play()
+        end
+        task.wait()
+    end
+end)
+
+-- Title Header
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1.00
+Title.Position = UDim2.new(0, 0, 0, 15)
+Title.Size = UDim2.new(1, 0, 0, 32)
+Title.Font = Enum.Font.FredokaOne
+Title.Text = "CHILLI HUB V7"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 24
+
+task.spawn(function()
+    local hue = 0
+    while Title and Title.Parent do
+        hue = ((tick() + 0.4) % 6) / 6
+        Title.TextColor3 = Color3.fromHSV(hue, 0.85, 1)
+        task.wait(0.03)
+    end
+end)
+
+-- Subtitle nhỏ bên dưới (Không hiện chữ 24h)
+local SubTitle = Instance.new("TextLabel")
+SubTitle.Name = "SubTitle"
+SubTitle.Parent = MainFrame
+SubTitle.BackgroundTransparency = 1.00
+SubTitle.Position = UDim2.new(0, 0, 0, 45)
+SubTitle.Size = UDim2.new(1, 0, 0, 18)
+SubTitle.Font = Enum.Font.GothamMedium
+SubTitle.Text = "Authentication Key Required to Proceed"
+SubTitle.TextColor3 = Color3.fromRGB(140, 140, 165)
+SubTitle.TextSize = 11
+
+-- TextBox Nhập Key (Hiển thị ở giữa)
+local TextBox = Instance.new("TextBox")
+TextBox.Name = "KeyBox"
+TextBox.Parent = MainFrame
+TextBox.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+TextBox.BackgroundTransparency = 0.4
+TextBox.BorderColor3 = Color3.fromRGB(0, 0, 0)
+TextBox.BorderSizePixel = 0
+TextBox.Position = UDim2.new(0.075, 0, 0, 72)
+TextBox.Size = UDim2.new(0.85, 0, 0, 46)
+TextBox.ClearTextOnFocus = false
+TextBox.Font = Enum.Font.GothamMedium
+TextBox.PlaceholderText = "Paste your key here..."
+TextBox.Text = ""
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 145)
+TextBox.TextSize = 14
+TextBox.TextXAlignment = Enum.TextXAlignment.Center
+TextBox.ClipsDescendants = true
+
+local BoxCorner = Instance.new("UICorner")
+BoxCorner.CornerRadius = UDim.new(0, 12)
+BoxCorner.Parent = TextBox
+
+local BoxStroke = Instance.new("UIStroke")
+BoxStroke.Color = Color3.fromRGB(55, 55, 75)
+BoxStroke.Thickness = 1.2
+BoxStroke.Parent = TextBox
+
+-- Nút Check Key
+local CheckButton = Instance.new("TextButton")
+CheckButton.Name = "CheckButton"
+CheckButton.Parent = MainFrame
+CheckButton.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+CheckButton.BackgroundTransparency = 0.1
+CheckButton.Position = UDim2.new(0.075, 0, 0, 132)
+CheckButton.Size = UDim2.new(0.41, 0, 0, 42)
+CheckButton.Font = Enum.Font.GothamBold
+CheckButton.Text = "CHECK KEY"
+CheckButton.TextColor3 = Color3.fromRGB(235, 235, 245)
+CheckButton.TextSize = 13
+
+local BtnCorner1 = Instance.new("UICorner")
+BtnCorner1.CornerRadius = UDim.new(0, 12)
+BtnCorner1.Parent = CheckButton
+
+local BtnStroke1 = Instance.new("UIStroke")
+BtnStroke1.Color = Color3.fromRGB(75, 75, 100)
+BtnStroke1.Thickness = 1.2
+BtnStroke1.Parent = CheckButton
+
+-- Nút Get Key
+local GetKeyButton = Instance.new("TextButton")
+GetKeyButton.Name = "GetKeyButton"
+GetKeyButton.Parent = MainFrame
+GetKeyButton.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+GetKeyButton.BackgroundTransparency = 0.1
+GetKeyButton.Position = UDim2.new(0.515, 0, 0, 132)
+GetKeyButton.Size = UDim2.new(0.41, 0, 0, 42)
+GetKeyButton.Font = Enum.Font.GothamBold
+GetKeyButton.Text = "GET KEY"
+GetKeyButton.TextColor3 = Color3.fromRGB(235, 235, 245)
+GetKeyButton.TextSize = 13
+
+local BtnCorner2 = Instance.new("UICorner")
+BtnCorner2.CornerRadius = UDim.new(0, 12)
+BtnCorner2.Parent = GetKeyButton
+
+local BtnStroke2 = Instance.new("UIStroke")
+BtnStroke2.Color = Color3.fromRGB(60, 60, 85)
+BtnStroke2.Thickness = 1.2
+BtnStroke2.Parent = GetKeyButton
+
+-- Hiệu ứng Hover mượt mà cho nút
+local function applyHoverEffect(btn)
+    local originalSize = btn.Size
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {Size = originalSize + UDim2.new(0, 4, 0, 2)}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {Size = originalSize}):Play()
+    end)
+end
+
+applyHoverEffect(CheckButton)
+applyHoverEffect(GetKeyButton)
+
+--// Khung Thông Báo Hiện Đại (Status Banner)
+local StatusFrame = Instance.new("Frame")
+StatusFrame.Name = "StatusFrame"
+StatusFrame.Parent = MainFrame
+StatusFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+StatusFrame.BackgroundTransparency = 0.4
+StatusFrame.Position = UDim2.new(0.075, 0, 0, 184)
+StatusFrame.Size = UDim2.new(0.85, 0, 0, 36)
+StatusFrame.Visible = false
+
+local StatusCorner = Instance.new("UICorner")
+StatusCorner.CornerRadius = UDim.new(0, 10)
+StatusCorner.Parent = StatusFrame
+
+local StatusStroke = Instance.new("UIStroke")
+StatusStroke.Color = Color3.fromRGB(70, 70, 90)
+StatusStroke.Thickness = 1.2
+StatusStroke.Parent = StatusFrame
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Parent = StatusFrame
+StatusLabel.BackgroundTransparency = 1.00
+StatusLabel.Size = UDim2.new(1, 0, 1, 0)
+StatusLabel.Font = Enum.Font.GothamBold
+StatusLabel.Text = ""
+StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatusLabel.TextSize = 12
+
+local function showStatus(text, bgColor, borderColor, textColor)
+    StatusFrame.Visible = true
+    StatusFrame.BackgroundColor3 = bgColor
+    StatusStroke.Color = borderColor
+    StatusLabel.TextColor3 = textColor
+    StatusLabel.Text = text
+    
+    StatusFrame.Size = UDim2.new(0.81, 0, 0, 30)
+    StatusFrame.BackgroundTransparency = 0.8
+    TweenService:Create(StatusFrame, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0.85, 0, 0, 36),
+        BackgroundTransparency = 0.35
+    }):Play()
+end
+
+-- Hiệu ứng lắc menu đồng bộ (Shake Animation)
+local originalPos = MainFrame.Position
+local function shakeUI()
+    local p = MainFrame.Position
+    local info = TweenInfo.new(0.03, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+    
+    TweenService:Create(MainFrame, info, {Position = p + UDim2.new(0, -12, 0, 0)}):Play()
+    task.wait(0.03)
+    TweenService:Create(MainFrame, info, {Position = p + UDim2.new(0, 12, 0, 0)}):Play()
+    task.wait(0.03)
+    TweenService:Create(MainFrame, info, {Position = p + UDim2.new(0, -8, 0, 0)}):Play()
+    task.wait(0.03)
+    TweenService:Create(MainFrame, info, {Position = p + UDim2.new(0, 8, 0, 0)}):Play()
+    task.wait(0.03)
+    TweenService:Create(MainFrame, info, {Position = p}):Play()
+end
+
+-- Xử lý sự kiện nút bấm
+CheckButton.MouseButton1Click:Connect(function()
+    local enteredKey = TextBox.Text
+    if enteredKey == CORRECT_KEY then
+        showStatus("✨ Success! Loading script...", Color3.fromRGB(20, 50, 30), Color3.fromRGB(80, 255, 120), Color3.fromRGB(100, 255, 140))
+        saveKey()
+        task.wait(0.8)
+        ScreenGui:Destroy()
+        loadstring(game:HttpGet(TARGET_SCRIPT_URL))()
+    else
+        -- Đồng thời: Xóa chữ ngay lập tức, bật bảng thông báo lỗi và lắc menu
+        TextBox.Text = "" 
+        showStatus("⚡ Incorrect Key! Access Denied.", Color3.fromRGB(50, 20, 25), Color3.fromRGB(255, 75, 75), Color3.fromRGB(255, 100, 100))
+        task.spawn(shakeUI)
+    end
+end)
+
+GetKeyButton.MouseButton1Click:Connect(function()
+    if setclipboard then
+        setclipboard(GET_KEY_URL)
+        showStatus("🔗 Get key link copied to clipboard!", Color3.fromRGB(20, 35, 50), Color3.fromRGB(100, 200, 255), Color3.fromRGB(120, 215, 255))
+    else
+        showStatus("❌ Your executor does not support clipboard.", Color3.fromRGB(50, 20, 25), Color3.fromRGB(255, 75, 75), Color3.fromRGB(255, 100, 100))
+    end
+end)
